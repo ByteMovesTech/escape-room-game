@@ -1,22 +1,57 @@
+// game.js
+
+// Get session ID from URL
 const urlParams = new URLSearchParams(window.location.search);
 const sessionId = urlParams.get("session");
 const sessionRef = db.ref("sessions/" + sessionId);
 
+// DOM elements
 const puzzleArea = document.getElementById("puzzleArea");
-const sendBtn = document.getElementById("sendBtn");
 const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
 const messagesDiv = document.getElementById("messages");
 
+// Ensure user is logged in
 auth.onAuthStateChanged(user => {
-  if (!user) window.location.href = "index.html";
+  if (!user) {
+    window.location.href = "index.html";
+  }
 });
 
-sessionRef.on("value", snap => {
-  const data = snap.val();
-  renderPuzzles(data.puzzles);
-  renderChat(data.chat);
+// -------------------
+// Real-time puzzle sync
+// -------------------
+sessionRef.child("puzzles").on("value", snap => {
+  const puzzles = snap.val();
+  renderPuzzles(puzzles);
 });
 
+// -------------------
+// Real-time chat
+// -------------------
+const chatRef = sessionRef.child("chat");
+
+// Listen for new messages
+chatRef.on("child_added", snap => {
+  const msg = snap.val();
+  messagesDiv.innerHTML += `<p><b>${msg.user}:</b> ${msg.message}</p>`;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight; // auto scroll
+});
+
+// Send chat message
+sendBtn.addEventListener("click", () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatRef.push({
+    user: auth.currentUser.email,
+    message: text
+  });
+  chatInput.value = "";
+});
+
+// -------------------
+// Render puzzles
+// -------------------
 function renderPuzzles(puzzles) {
   puzzleArea.innerHTML = "";
   let allSolved = true;
@@ -26,10 +61,11 @@ function renderPuzzles(puzzles) {
     if (!p.solved) allSolved = false;
 
     puzzleArea.innerHTML += `
-      <div>
+      <div class="puzzle">
         <h3>${room}</h3>
         ${renderPuzzle(p, room)}
       </div>
+      <hr>
     `;
   }
 
@@ -38,59 +74,51 @@ function renderPuzzles(puzzles) {
   }
 }
 
+// -------------------
+// Render individual puzzle
+// -------------------
 function renderPuzzle(p, room) {
   if (p.solved) return "<p>Solved!</p>";
 
-  if (p.type === "logic") {
-    return `
-      <p>${p.data.sequence.join(", ")}</p>
-      <input id="${room}">
-      <button onclick="submitAnswer('${room}')">Submit</button>
-    `;
-  }
-
-  if (p.type === "scramble") {
-    return `
-      <p>Unscramble: ${p.data.scrambled}</p>
-      <input id="${room}">
-      <button onclick="submitAnswer('${room}')">Submit</button>
-    `;
-  }
-
-  if (p.type === "cipher") {
-    return `
-      <p>Decode: ${p.data.encoded}</p>
-      <input id="${room}">
-      <button onclick="submitAnswer('${room}')">Submit</button>
-    `;
+  switch (p.type) {
+    case "logic":
+      return `
+        <p>Sequence: ${p.data.sequence.join(", ")}</p>
+        <input id="${room}" placeholder="Your answer">
+        <button onclick="submitAnswer('${room}')">Submit</button>
+      `;
+    case "scramble":
+      return `
+        <p>Unscramble: ${p.data.scrambled}</p>
+        <input id="${room}" placeholder="Your answer">
+        <button onclick="submitAnswer('${room}')">Submit</button>
+      `;
+    case "cipher":
+      return `
+        <p>Decode: ${p.data.encoded}</p>
+        <input id="${room}" placeholder="Your answer">
+        <button onclick="submitAnswer('${room}')">Submit</button>
+      `;
+    default:
+      return "<p>Unknown puzzle type</p>";
   }
 }
 
+// -------------------
+// Submit answer
+// -------------------
 function submitAnswer(room) {
-  sessionRef.child("puzzles/" + room).once("value", snap => {
-    const data = snap.val();
-    const userAnswer = document.getElementById(room).value.toUpperCase();
+  const roomRef = sessionRef.child("puzzles/" + room);
 
-    if (userAnswer == data.data.answer) {
-      sessionRef.child("puzzles/" + room).update({ solved: true });
+  roomRef.once("value", snap => {
+    const data = snap.val();
+    const userAnswer = document.getElementById(room).value.trim().toUpperCase();
+
+    // Accept correct answer
+    if (userAnswer === data.data.answer.toString().toUpperCase()) {
+      roomRef.update({ solved: true });
     } else {
       alert("Try again!");
     }
   });
-}
-
-sendBtn.addEventListener("click", () => {
-  if (!chatInput.value) return;
-  sessionRef.child("chat").push({
-    user: auth.currentUser.email,
-    message: chatInput.value
-  });
-  chatInput.value = "";
-});
-
-function renderChat(chat) {
-  messagesDiv.innerHTML = "";
-  for (let key in chat) {
-    messagesDiv.innerHTML += `<p><b>${chat[key].user}:</b> ${chat[key].message}</p>`;
-  }
 }
