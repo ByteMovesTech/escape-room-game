@@ -1,1 +1,34 @@
-fjlkfjlkf
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Private Escape Room</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="js/firebase.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+  <div id="loginDiv">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <div id="gameDiv" style="display:none;">
+    <h2>Welcome</h2>
+    <button id="startBtn">Start Escape Room</button>
+  </div>
+
+</div>
+
+<script src="js/landing.js"></script>
+</body>
+</html>
