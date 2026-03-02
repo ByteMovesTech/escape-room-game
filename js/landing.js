@@ -1,75 +1,77 @@
 // landing.js
 
-// Buttons and input elements
-const loginBtn = document.getElementById("loginBtn");
-const startBtn = document.getElementById("startBtn");
-const joinBtn = document.getElementById("joinBtn");
-const joinInput = document.getElementById("joinSessionInput");
+document.addEventListener("DOMContentLoaded", function () {
 
-// -------------------
-// Login with Firebase Auth
-// -------------------
-loginBtn.addEventListener("click", () => {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const loginBtn = document.getElementById("loginBtn");
+  const startBtn = document.getElementById("startBtn");
+  const joinBtn = document.getElementById("joinBtn");
+  const joinInput = document.getElementById("joinSessionInput");
 
-  auth.signInWithEmailAndPassword(email, password)
-    .catch(err => alert(err.message));
-});
+  // -------------------
+  // Login
+  // -------------------
+  loginBtn.addEventListener("click", () => {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-// Show game div if logged in
-auth.onAuthStateChanged(user => {
-  if (user) {
-    document.getElementById("loginDiv").style.display = "none";
-    document.getElementById("gameDiv").style.display = "block";
-  }
-});
-
-// -------------------
-// Start new game
-// -------------------
-startBtn.addEventListener("click", () => {
-  // Generate short 6-character session code
-  const sessionId = Math.random().toString(36).substr(2, 6).toUpperCase();
-  const puzzles = generateSessionPuzzles();
-
-  // Save session in Firebase
-  db.ref("sessions/" + sessionId).set({
-    puzzles,
-    chat: {}
+    auth.signInWithEmailAndPassword(email, password)
+      .catch(err => alert(err.message));
   });
 
-  // Show the session code
-  alert("Share this session code with your teammate: " + sessionId);
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.getElementById("loginDiv").style.display = "none";
+      document.getElementById("gameDiv").style.display = "block";
+    }
+  });
 
-  // Redirect to game page
-  window.location.href = "game.html?session=" + sessionId;
-});
+  // -------------------
+  // Start New Game
+  // -------------------
+  startBtn.addEventListener("click", async () => {
+    const sessionId = Math.random().toString(36).substr(2, 6).toUpperCase();
+    const puzzles = generateSessionPuzzles();
 
-// -------------------
-// Join existing session
-// -------------------
-joinBtn.addEventListener("click", () => {
-  const code = joinInput.value.trim().toUpperCase();
-  if (!code) return alert("Enter a session code.");
+    await db.ref("sessions/" + sessionId).set({
+      puzzles,
+      chat: {}
+    });
 
-  // Check if session exists
-  db.ref("sessions/" + code).once("value", snap => {
+    alert("Share this session code: " + sessionId);
+    window.location.href = "game.html?session=" + sessionId;
+  });
+
+  // -------------------
+  // Join Existing Game
+  // -------------------
+  joinBtn.addEventListener("click", async () => {
+    const code = joinInput.value.trim().toUpperCase();
+
+    if (!code) {
+      alert("Enter a session code.");
+      return;
+    }
+
+    console.log("Join clicked with code:", code);
+
+    const snap = await db.ref("sessions/" + code).get();
+
     if (snap.exists()) {
       window.location.href = "game.html?session=" + code;
     } else {
-      alert("Session not found. Check the code.");
+      alert("Session not found.");
     }
   });
+
 });
 
 // -------------------
-// Generate random puzzles
+// Puzzle Generator
 // -------------------
 function generateSessionPuzzles() {
   const puzzleTypes = ["logic", "scramble", "cipher"];
   const puzzles = {};
-  const roomCount = 3 + Math.floor(Math.random() * 3); // 3-5 rooms
+  const roomCount = 3 + Math.floor(Math.random() * 3);
 
   for (let i = 1; i <= roomCount; i++) {
     const type = puzzleTypes[Math.floor(Math.random() * puzzleTypes.length)];
