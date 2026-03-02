@@ -1,11 +1,14 @@
 // landing.js
 
+// Buttons and input elements
 const loginBtn = document.getElementById("loginBtn");
 const startBtn = document.getElementById("startBtn");
 const joinBtn = document.getElementById("joinBtn");
 const joinInput = document.getElementById("joinSessionInput");
 
+// -------------------
 // Login with Firebase Auth
+// -------------------
 loginBtn.addEventListener("click", () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -36,10 +39,10 @@ startBtn.addEventListener("click", () => {
     chat: {}
   });
 
-  // Alert code so teammate can join
+  // Show the session code
   alert("Share this session code with your teammate: " + sessionId);
 
-  // Go to game page
+  // Redirect to game page
   window.location.href = "game.html?session=" + sessionId;
 });
 
