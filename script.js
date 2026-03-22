@@ -1,4 +1,4 @@
-// Your Firebase v8 config
+// Firebase config (v8 style)
 const firebaseConfig = {
   apiKey: "AIzaSyCNvc-KTRnSrQfU0lIkK9I-t4qSdx1cG4s",
   authDomain: "cookiecuttervault.firebaseapp.com",
@@ -13,9 +13,11 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 let room = "";
+let playerName = "";
 
 // CREATE ROOM
 function createRoom() {
+  playerName = document.getElementById("playerName").value || "Player";
   room = Math.random().toString(36).substring(2,6).toUpperCase();
   document.getElementById("status").innerText = "Room Code: " + room;
 
@@ -30,6 +32,7 @@ function createRoom() {
 
 // JOIN ROOM
 function joinRoom() {
+  playerName = document.getElementById("playerName").value || "Player";
   room = document.getElementById("roomCode").value.toUpperCase();
   if (!room) {
     alert("Enter a room code first");
@@ -42,17 +45,18 @@ function joinRoom() {
 
 // LISTEN FOR UPDATES
 function listenToRoom() {
-  // Listen for puzzle updates
+  // Puzzle updates
   const puzzleRef = firebase.database().ref("rooms/" + room + "/puzzle");
   puzzleRef.on("value", snap => {
     document.getElementById("puzzle").innerText = snap.val();
   });
 
-  // Listen for chat updates
+  // Chat updates
   const chatRef = firebase.database().ref("rooms/" + room + "/chat");
   chatRef.on("child_added", snap => {
-    const msg = snap.val();
-    document.getElementById("chat").innerHTML += "<div>" + msg + "</div>";
+    const data = snap.val();
+    const msgText = `<b>${data.name}:</b> ${data.message}`;
+    document.getElementById("chat").innerHTML += "<div>" + msgText + "</div>";
     document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
   });
 }
@@ -62,7 +66,11 @@ function sendMessage() {
   const msg = document.getElementById("message").value;
   if (!msg) return;
 
-  firebase.database().ref("rooms/" + room + "/chat").push(msg);
+  firebase.database().ref("rooms/" + room + "/chat").push({
+    name: playerName,
+    message: msg
+  });
+
   document.getElementById("message").value = "";
 }
 
