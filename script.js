@@ -20,17 +20,19 @@ let chatRef;
 function createRoom() {
   playerName = document.getElementById("playerName").value || "Player";
   room = Math.random().toString(36).substring(2,6).toUpperCase();
-  playerRole = "A";
-
-  document.getElementById("status").innerText = "Room Code: " + room;
 
   const game = generateGame();
 
   firebase.database().ref("rooms/" + room).set({
     game: game,
     progress: "playing",
+    players: {
+      A: playerName
+    },
     chat: {}
   });
+
+  document.getElementById("status").innerText = "Room Code: " + room;
 
   listenToRoom();
 }
@@ -39,16 +41,30 @@ function createRoom() {
 function joinRoom() {
   playerName = document.getElementById("playerName").value || "Player";
   room = document.getElementById("roomCode").value.toUpperCase();
-  playerRole = "B";
 
   if (!room) {
     alert("Enter a room code");
     return;
   }
 
-  document.getElementById("status").innerText = "Joined Room: " + room;
+  const roomRef = firebase.database().ref("rooms/" + room + "/players");
 
-  listenToRoom();
+  roomRef.once("value", snap => {
+    const players = snap.val() || {};
+
+    if (!players.A) {
+      roomRef.update({ A: playerName });
+    } else if (!players.B) {
+      roomRef.update({ B: playerName });
+    } else {
+      alert("Room full!");
+      return;
+    }
+
+    document.getElementById("status").innerText = "Joined Room: " + room;
+
+    listenToRoom();
+  });
 }
 
 // LISTEN
@@ -61,6 +77,12 @@ function listenToRoom() {
     const data = snap.val();
     if (!data) return;
 
+    const players = data.players || {};
+
+    // Assign role
+    if (players.A === playerName) playerRole = "A";
+    if (players.B === playerName) playerRole = "B";
+
     if (data.progress === "won") {
       document.getElementById("puzzle").innerText = "🎉 YOU ESCAPED!";
       return;
@@ -70,8 +92,10 @@ function listenToRoom() {
 
     if (playerRole === "A") {
       document.getElementById("puzzle").innerText = game.clueA;
-    } else {
+    } else if (playerRole === "B") {
       document.getElementById("puzzle").innerText = game.clueB;
+    } else {
+      document.getElementById("puzzle").innerText = "Waiting for player...";
     }
 
     window.correctAnswer = game.answer;
@@ -83,7 +107,7 @@ function listenToRoom() {
   chatRef.on("child_added", snap => {
     const data = snap.val();
     if (data && data.name && data.message) {
-      const msgText = `<b>${data.name}:</b> ${data.message}`;
+      const msgText = "<b>" + data.name + ":</b> " + data.message;
       document.getElementById("chat").innerHTML += "<div>" + msgText + "</div>";
       document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
     }
@@ -114,7 +138,7 @@ function submitAnswer() {
   }
 }
 
-// GAME GENERATOR (Split Clues)
+// GAME GENERATOR
 function generateGame() {
   const games = [
     {
@@ -135,4 +159,4 @@ function generateGame() {
   ];
 
   return games[Math.floor(Math.random() * games.length)];
-}
+             }
