@@ -14,6 +14,7 @@ firebase.initializeApp(firebaseConfig);
 
 let room = "";
 let playerName = "";
+let chatRef;
 
 // CREATE ROOM
 function createRoom() {
@@ -21,10 +22,10 @@ function createRoom() {
   room = Math.random().toString(36).substring(2,6).toUpperCase();
   document.getElementById("status").innerText = "Room Code: " + room;
 
-  const puzzle = generatePuzzle();
-
+  // Clear any old data
   firebase.database().ref("rooms/" + room).set({
-    puzzle: puzzle
+    puzzle: generatePuzzle(),
+    chat: {}
   });
 
   listenToRoom();
@@ -45,6 +46,9 @@ function joinRoom() {
 
 // LISTEN FOR UPDATES
 function listenToRoom() {
+  // Clear previous chat UI
+  document.getElementById("chat").innerHTML = "";
+
   // Puzzle updates
   const puzzleRef = firebase.database().ref("rooms/" + room + "/puzzle");
   puzzleRef.on("value", snap => {
@@ -52,21 +56,23 @@ function listenToRoom() {
   });
 
   // Chat updates
-  const chatRef = firebase.database().ref("rooms/" + room + "/chat");
+  chatRef = firebase.database().ref("rooms/" + room + "/chat");
   chatRef.on("child_added", snap => {
     const data = snap.val();
-    const msgText = `<b>${data.name}:</b> ${data.message}`;
-    document.getElementById("chat").innerHTML += "<div>" + msgText + "</div>";
-    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+    if (data && data.name && data.message) {
+      const msgText = `<b>${data.name}:</b> ${data.message}`;
+      document.getElementById("chat").innerHTML += "<div>" + msgText + "</div>";
+      document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+    }
   });
 }
 
 // SEND MESSAGE
 function sendMessage() {
   const msg = document.getElementById("message").value;
-  if (!msg) return;
+  if (!msg || !chatRef) return;
 
-  firebase.database().ref("rooms/" + room + "/chat").push({
+  chatRef.push({
     name: playerName,
     message: msg
   });
